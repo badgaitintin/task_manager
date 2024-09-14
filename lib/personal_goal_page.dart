@@ -119,9 +119,8 @@ class _PersonalGoalsPageState extends State<PersonalGoalsPage> {
           ),
           StreamBuilder<QuerySnapshot>(
             stream: _firestore
-                .collection('personal_goal')
-                .doc(_auth.currentUser!.uid)
-                .collection('goals')
+                .collection('personal_goals')
+                .where('userId', isEqualTo: _auth.currentUser!.uid)
                 .orderBy('createdAt', descending: true)
                 .snapshots(),
             builder: (context, snapshot) {
@@ -220,28 +219,36 @@ class _PersonalGoalsPageState extends State<PersonalGoalsPage> {
     }
   }
 
-  Future<void> _submitGoal() async {
+Future<void> _submitGoal() async {
     if (_formKey.currentState!.validate() && _selectedDate != null) {
       final user = _auth.currentUser;
       if (user != null) {
-        await _firestore
-            .collection('personal_goal')
-            .doc(user.uid)
-            .collection('goals')
-            .add({
-          'title': _goalTitleController.text,
-          'expectedDate': DateFormat('yyyy-MM-dd').format(_selectedDate!),
-          'tasks': _tasks,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        _goalTitleController.clear();
-        _taskController.clear();
-        setState(() {
-          _selectedDate = null;
-          _tasks = [];
-        });
+        try {
+          await _firestore.collection('personal_goals').add({
+            'userId': user.uid,
+            'title': _goalTitleController.text,
+            'expectedDate': DateFormat('yyyy-MM-dd').format(_selectedDate!),
+            'tasks': _tasks,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+          _goalTitleController.clear();
+          _taskController.clear();
+          setState(() {
+            _selectedDate = null;
+            _tasks = [];
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Personal goal added successfully')),
+          );
+        } catch (e) {
+          print('Error adding personal goal: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error adding personal goal: $e')),
+          );
+        }
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Personal goal added successfully')),
+          const SnackBar(content: Text('User not logged in')),
         );
       }
     } else if (_selectedDate == null) {
@@ -252,18 +259,10 @@ class _PersonalGoalsPageState extends State<PersonalGoalsPage> {
   }
 
   Future<void> _deleteGoal(String goalId) async {
-    final user = _auth.currentUser;
-    if (user != null) {
-      await _firestore
-          .collection('personal_goal')
-          .doc(user.uid)
-          .collection('goals')
-          .doc(goalId)
-          .delete();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Goal deleted')),
-      );
-    }
+    await _firestore.collection('personal_goals').doc(goalId).delete();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Goal deleted')),
+    );
   }
 
   @override

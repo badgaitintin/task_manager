@@ -29,6 +29,7 @@ void initState() {
   });
 }
 
+  
   @override
   Widget build(BuildContext context) {
     if (_user == null) {
@@ -46,7 +47,7 @@ void initState() {
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
-              showSearch(context: context, delegate: TaskSearch());
+              showSearch(context: context, delegate: TaskSearch(userId: _user!.uid));
             },
           ),
         ],
@@ -54,7 +55,7 @@ void initState() {
       drawer: _buildDrawer(),
       body: Column(
         children: [
-          _buildCurrentDate(),
+          _buildCurrentDateAndUpcomingTasks(),
           _buildCalendar(),
           Expanded(
             child: _buildTaskList(),
@@ -69,6 +70,83 @@ void initState() {
     );
   }
 
+  Widget _buildCurrentDateAndUpcomingTasks() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 1,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Today is',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                Text(
+                  '${DateTime.now().day}',
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(fontWeight: FontWeight.bold) ?? 
+                         const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  DateFormat('MMMM').format(DateTime.now()).toUpperCase(),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: _buildUpcomingTasks(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUpcomingTasks() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore
+          .collection('users')
+          .doc(_user!.uid)
+          .collection('tasks')
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(DateTime.now()))
+          .orderBy('date')
+          .limit(3)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Text('No upcoming tasks');
+        }
+        final tasks = snapshot.data!.docs;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Upcoming Tasks',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            ...tasks.map((task) {
+              final taskData = task.data() as Map<String, dynamic>;
+              return ListTile(
+                title: Text(taskData['title']),
+                subtitle: Text(DateFormat('MMM d, y').format((taskData['date'] as Timestamp).toDate())),
+                leading: const Icon(Icons.event),
+                dense: true,
+                visualDensity: VisualDensity.compact,
+              );
+            }).toList(),
+          ],
+        );
+      },
+    );
+  }
 
   Widget _buildCurrentDate() {
     return Container(
@@ -409,6 +487,10 @@ void _showAddTaskDialog() {
 }
 
 class TaskSearch extends SearchDelegate<String> {
+  final String userId;
+
+  TaskSearch({required this.userId});
+
   @override
   List<Widget> buildActions(BuildContext context) {
     return [
@@ -433,13 +515,72 @@ class TaskSearch extends SearchDelegate<String> {
 
   @override
   Widget buildResults(BuildContext context) {
-    // Implement search logic here
-    return Center(child: Text('Search results for: $query'));
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('tasks')
+          .where('title', isGreaterThanOrEqualTo: query)
+          .where('title', isLessThan: query + 'z')
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No results found'));
+        }
+        final tasks = snapshot.data!.docs;
+        return ListView.builder(
+          itemCount: tasks.length,
+          itemBuilder: (context, index) {
+            final task = tasks[index].data() as Map<String, dynamic>;
+            return ListTile(
+              title: Text(task['title']),
+              subtitle: Text(DateFormat('MMM d, y').format((task['date'] as Timestamp).toDate())),
+              onTap: () {
+                // You can navigate to task details page here
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    // Implement suggestion logic here
-    return Center(child: Text('Suggestions for: $query'));
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('tasks')
+          .where('title', isGreaterThanOrEqualTo: query)
+          .where('title', isLessThan: query + 'z')
+          .limit(5)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No suggestions'));
+        }
+        final tasks = snapshot.data!.docs;
+        return ListView.builder(
+          itemCount: tasks.length,
+          itemBuilder: (context, index) {
+            final task = tasks[index].data() as Map<String, dynamic>;
+            return ListTile(
+              title: Text(task['title']),
+              onTap: () {
+                query = task['title'];
+                showResults(context);
+              },
+            );
+          },
+        );
+      },
+    );
   }
 }
