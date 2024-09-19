@@ -22,156 +22,65 @@ class _PersonalGoalsPageState extends State<PersonalGoalsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      body: CustomScrollView(
-        slivers: <Widget>[
-          SliverAppBar(
-            expandedHeight: 120.0,
-            floating: false,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text('Personal Goals',
-                  style: TextStyle(color: Theme.of(context).primaryColor)),
-              background: Container(
-                color: Colors.white,
-              ),
+      appBar: AppBar(
+        title: const Text('Personal Goals'),
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildGoalForm(),
+              const SizedBox(height: 20),
+              Text('Your Goals', style: Theme.of(context).textTheme.titleLarge),
+              _buildGoalsList(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGoalForm() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        children: [
+          TextFormField(
+            controller: _goalTitleController,
+            decoration: const InputDecoration(labelText: 'Goal Title'),
+            validator: (value) => value!.isEmpty ? 'Please enter a goal title' : null,
+          ),
+          const SizedBox(height: 10),
+          InkWell(
+            onTap: () => _selectDate(context),
+            child: InputDecorator(
+              decoration: const InputDecoration(labelText: 'Expected Completion Date'),
+              child: Text(_selectedDate == null ? 'Select a date' : DateFormat('yyyy-MM-dd').format(_selectedDate!)),
             ),
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _goalTitleController,
-                          decoration: InputDecoration(
-                            labelText: 'Enter a new personal goal title',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a goal title';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        InkWell(
-                          onTap: () => _selectDate(context),
-                          child: InputDecorator(
-                            decoration: InputDecoration(
-                              labelText: 'Expected completion date',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            child: Text(
-                              _selectedDate == null
-                                  ? 'Select a date'
-                                  : DateFormat('yyyy-MM-dd').format(_selectedDate!),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _taskController,
-                          decoration: InputDecoration(
-                            labelText: 'Add a task',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(Icons.add),
-                              onPressed: _addTask,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        ..._buildTaskList(),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _submitGoal,
-                          child: const Text('Add Goal'),
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size(double.infinity, 50),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _taskController,
+                  decoration: const InputDecoration(labelText: 'Add a task'),
                 ),
               ),
-            ),
+              IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: _addTask,
+              ),
+            ],
           ),
-          StreamBuilder<QuerySnapshot>(
-            stream: _firestore
-                .collection('personal_goals')
-                .where('userId', isEqualTo: _auth.currentUser!.uid)
-                .orderBy('createdAt', descending: true)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
-
-              final goals = snapshot.data!.docs;
-
-              return SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final goal = goals[index].data() as Map<String, dynamic>;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Card(
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: ExpansionTile(
-                          title: Text(goal['title'],
-                              style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('Expected: ${goal['expectedDate']}'),
-                          children: [
-                            ...(goal['tasks'] as List<dynamic>).map((task) => 
-                              ListTile(
-                                title: Text(task),
-                                leading: Icon(Icons.check_box_outline_blank),
-                              )
-                            ),
-                            ButtonBar(
-                              alignment: MainAxisAlignment.end,
-                              children: [
-                                TextButton(
-                                  child: Text('Delete Goal'),
-                                  onPressed: () => _deleteGoal(goals[index].id),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                  childCount: goals.length,
-                ),
-              );
-            },
+          const SizedBox(height: 10),
+          Column(children: _buildTaskList()),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _submitGoal,
+            child: const Text('Add Goal'),
           ),
         ],
       ),
@@ -179,15 +88,89 @@ class _PersonalGoalsPageState extends State<PersonalGoalsPage> {
   }
 
   List<Widget> _buildTaskList() {
-    return _tasks.map((task) => 
-      ListTile(
-        title: Text(task),
-        trailing: IconButton(
-          icon: Icon(Icons.remove_circle_outline),
-          onPressed: () => _removeTask(task),
-        ),
-      )
-    ).toList();
+    return _tasks.map((task) => ListTile(
+      title: Text(task),
+      trailing: IconButton(
+        icon: const Icon(Icons.remove),
+        onPressed: () => _removeTask(task),
+      ),
+    )).toList();
+  }
+
+  Widget _buildGoalsList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore
+          .collection('personal_goals')
+          .where('userId', isEqualTo: _auth.currentUser!.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final goals = snapshot.data!.docs;
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: goals.length,
+          itemBuilder: (context, index) {
+            final goal = goals[index].data() as Map<String, dynamic>;
+            return Card(
+              child: ListTile(
+                title: Text(goal['title']),
+                subtitle: Text('Expected: ${goal['expectedDate']}'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.info_outline),
+                      onPressed: () => _showGoalDetails(goal),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () => _deleteGoal(goals[index].id),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showGoalDetails(Map<String, dynamic> goal) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(goal['title']),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Expected completion: ${goal['expectedDate']}'),
+                const SizedBox(height: 10),
+                Text('Tasks:', style: Theme.of(context).textTheme.titleMedium),
+                ...((goal['tasks'] as List<dynamic>?) ?? []).map((task) => 
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10),
+                    child: Text('• $task'),
+                  )
+                ).toList(),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Close'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _addTask() {
@@ -219,50 +202,44 @@ class _PersonalGoalsPageState extends State<PersonalGoalsPage> {
     }
   }
 
-Future<void> _submitGoal() async {
+  Future<void> _submitGoal() async {
     if (_formKey.currentState!.validate() && _selectedDate != null) {
-      final user = _auth.currentUser;
-      if (user != null) {
-        try {
-          await _firestore.collection('personal_goals').add({
-            'userId': user.uid,
-            'title': _goalTitleController.text,
-            'expectedDate': DateFormat('yyyy-MM-dd').format(_selectedDate!),
-            'tasks': _tasks,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-          _goalTitleController.clear();
-          _taskController.clear();
-          setState(() {
-            _selectedDate = null;
-            _tasks = [];
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Personal goal added successfully')),
-          );
-        } catch (e) {
-          print('Error adding personal goal: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error adding personal goal: $e')),
-          );
-        }
-      } else {
+      try {
+        await _firestore.collection('personal_goals').add({
+          'userId': _auth.currentUser!.uid,
+          'title': _goalTitleController.text,
+          'expectedDate': DateFormat('yyyy-MM-dd').format(_selectedDate!),
+          'tasks': _tasks,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        _goalTitleController.clear();
+        _taskController.clear();
+        setState(() {
+          _selectedDate = null;
+          _tasks = [];
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User not logged in')),
+          const SnackBar(content: Text('Goal added successfully')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add goal: $e')),
         );
       }
-    } else if (_selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an expected completion date')),
-      );
     }
   }
 
   Future<void> _deleteGoal(String goalId) async {
-    await _firestore.collection('personal_goals').doc(goalId).delete();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Goal deleted')),
-    );
+    try {
+      await _firestore.collection('personal_goals').doc(goalId).delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Goal deleted successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete goal: $e')),
+      );
+    }
   }
 
   @override

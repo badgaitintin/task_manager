@@ -81,7 +81,7 @@ class _MyAppState extends State<MyApp> {
     
     final textColor = brightness == Brightness.light
         ? Colors.black87
-        : Colors.white;
+        : Colors.white70;
     
     return ThemeData(
       brightness: brightness,
@@ -107,7 +107,7 @@ class _MyAppState extends State<MyApp> {
       appBarTheme: AppBarTheme(
         backgroundColor: brightness == Brightness.light
             ? Colors.white
-            : const Color(0xFF1F1F1F),
+            : const Color(0xFF1E1E1E),
         iconTheme: IconThemeData(color: primaryColor),
         titleTextStyle: TextStyle(
           color: primaryColor,
@@ -149,7 +149,7 @@ class _MyAppState extends State<MyApp> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: secondaryColor),
+          borderSide: const BorderSide(color: secondaryColor),
         ),
         labelStyle: TextStyle(color: textColor.withOpacity(0.8)),
         hintStyle: TextStyle(color: textColor.withOpacity(0.5)),
@@ -168,6 +168,12 @@ class _MyAppState extends State<MyApp> {
           }
           return brightness == Brightness.light ? Colors.grey[200]! : Colors.grey[600]!;
         }),
+      ),
+      dialogTheme: DialogTheme(
+        backgroundColor: brightness == Brightness.light
+            ? Colors.white
+            : const Color(0xFF2C2C2C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       fontFamily: 'SFProMed',
     );

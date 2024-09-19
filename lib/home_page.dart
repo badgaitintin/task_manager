@@ -141,7 +141,7 @@ void initState() {
                 dense: true,
                 visualDensity: VisualDensity.compact,
               );
-            }).toList(),
+            }),
           ],
         );
       },
@@ -521,7 +521,7 @@ class TaskSearch extends SearchDelegate<String> {
           .doc(userId)
           .collection('tasks')
           .where('title', isGreaterThanOrEqualTo: query)
-          .where('title', isLessThan: query + 'z')
+          .where('title', isLessThan: '${query}z')
           .get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -556,7 +556,7 @@ class TaskSearch extends SearchDelegate<String> {
           .doc(userId)
           .collection('tasks')
           .where('title', isGreaterThanOrEqualTo: query)
-          .where('title', isLessThan: query + 'z')
+          .where('title', isLessThan: '${query}z')
           .limit(5)
           .get(),
       builder: (context, snapshot) {
