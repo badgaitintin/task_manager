@@ -158,7 +158,7 @@ class _PersonalGoalsPageState extends State<PersonalGoalsPage> {
                     padding: const EdgeInsets.only(left: 10),
                     child: Text('• $task'),
                   )
-                ).toList(),
+                ),
               ],
             ),
           ),

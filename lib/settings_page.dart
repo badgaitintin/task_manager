@@ -15,7 +15,9 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isDarkMode = false;
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _currentPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   @override
   void initState() {
@@ -37,7 +39,7 @@ class _SettingsPageState extends State<SettingsPage> {
     widget.onThemeChanged(_isDarkMode);
   }
 
-  Future<void> _loadUserInfo() async {
+    Future<void> _loadUserInfo() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       setState(() {
@@ -57,9 +59,6 @@ class _SettingsPageState extends State<SettingsPage> {
         if (_emailController.text != user.email) {
           await user.updateEmail(_emailController.text);
         }
-        if (_passwordController.text.isNotEmpty) {
-          await user.updatePassword(_passwordController.text);
-        }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('User information updated successfully')),
         );
@@ -71,7 +70,37 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  @override
+  Future<void> _updatePassword() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      if (_newPasswordController.text != _confirmPasswordController.text) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('New passwords do not match')),
+        );
+        return;
+      }
+      try {
+        AuthCredential credential = EmailAuthProvider.credential(
+          email: user.email!,
+          password: _currentPasswordController.text,
+        );
+        await user.reauthenticateWithCredential(credential);
+        await user.updatePassword(_newPasswordController.text);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password updated successfully')),
+        );
+        _currentPasswordController.clear();
+        _newPasswordController.clear();
+        _confirmPasswordController.clear();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update password: $e')),
+        );
+      }
+    }
+  }
+
+   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -103,15 +132,32 @@ class _SettingsPageState extends State<SettingsPage> {
               controller: _emailController,
               decoration: const InputDecoration(labelText: 'Email'),
             ),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'New Password'),
-              obscureText: true,
-            ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _updateUserInfo,
               child: const Text('Update Account Information'),
+            ),
+            const SizedBox(height: 40),
+            Text('Change Password', style: Theme.of(context).textTheme.titleLarge),
+            TextField(
+              controller: _currentPasswordController,
+              decoration: const InputDecoration(labelText: 'Current Password'),
+              obscureText: true,
+            ),
+            TextField(
+              controller: _newPasswordController,
+              decoration: const InputDecoration(labelText: 'New Password'),
+              obscureText: true,
+            ),
+            TextField(
+              controller: _confirmPasswordController,
+              decoration: const InputDecoration(labelText: 'Confirm New Password'),
+              obscureText: true,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _updatePassword,
+              child: const Text('Change Password'),
             ),
           ],
         ),
@@ -123,7 +169,9 @@ class _SettingsPageState extends State<SettingsPage> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _passwordController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 }

@@ -19,64 +19,62 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
 
   Future<void> _signIn() async {
-  if (_formKey.currentState!.validate()) {
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      // Sign in with email and password
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+      try {
+        UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
 
-      // Check if the user exists in Firestore
-      DocumentSnapshot userDoc = await _firestore.collection('users').doc(userCredential.user!.uid).get();
+        DocumentSnapshot userDoc = await _firestore.collection('users').doc(userCredential.user!.uid).get();
 
-      if (!userDoc.exists) {
-        // User doesn't exist in Firestore, create a new document
-        await _firestore.collection('users').doc(userCredential.user!.uid).set({
-          'userId': userCredential.user!.uid,
-          'email': userCredential.user!.email,
-          'createdAt': FieldValue.serverTimestamp(),
+        if (!userDoc.exists) {
+          await _firestore.collection('users').doc(userCredential.user!.uid).set({
+            'userId': userCredential.user!.uid,
+            'email': userCredential.user!.email,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        Navigator.pushReplacementNamed(context, '/home');
+      } on FirebaseAuthException catch (e) {
+        String errorMessage;
+        switch (e.code) {
+          case 'user-not-found':
+            errorMessage = 'No user found for that email.';
+            break;
+          case 'wrong-password':
+            errorMessage = 'Wrong password provided for that user.';
+            break;
+          case 'invalid-email':
+            errorMessage = 'The email address is badly formatted.';
+            break;
+          case 'user-disabled':
+            errorMessage = 'This user account has been disabled.';
+            break;
+          case 'too-many-requests':
+            errorMessage = 'Too many unsuccessful login attempts. Please try again later.';
+            break;
+          default:
+            errorMessage = 'An error occurred: ${e.message}';
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('An unexpected error occurred: $e')),
+        );
+      } finally {
+        setState(() {
+          _isLoading = false;
         });
       }
-
-      // Proceed to home page
-      Navigator.pushReplacementNamed(context, '/home');
-
-    } on FirebaseAuthException catch (e) {
-      String errorMessage;
-      switch (e.code) {
-        case 'user-not-found':
-          errorMessage = 'No user found for that email.';
-          break;
-        case 'wrong-password':
-          errorMessage = 'Wrong password provided for that user.';
-          break;
-        case 'user-disabled':
-          errorMessage = 'This user account has been disabled.';
-          break;
-        case 'too-many-requests':
-          errorMessage = 'Too many unsuccessful login attempts. Please try again later.';
-          break;
-        default:
-          errorMessage = 'An error occurred: ${e.message}';
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An unexpected error occurred: $e')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
